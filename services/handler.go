@@ -1,36 +1,36 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"github.com/Shopify/sarama"
-	kafka_wrapper "github.com/Trendyol/kafka-wrapper"
+	"github.com/Trendyol/kafka-shovel/kafka"
 )
 
+type Interceptor func(ctx context.Context, message *sarama.ConsumerMessage) context.Context
+
 type eventHandler struct {
-	service Service
+	Service
 }
 
-func NewEventHandler(service Service) kafka_wrapper.EventHandler {
+func NewEventHandler(service Service) kafka.EventHandler {
 	return &eventHandler{
-		service: service,
+		service,
 	}
 }
 
-// Setup is run at the beginning of a new session, before ConsumeClaim
 func (e *eventHandler) Setup(session sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
 func (e *eventHandler) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-// ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (e *eventHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for message := range claim.Messages() {
 		fmt.Println("Received messages", string(message.Value))
-		err := e.service.OperateEvent(session.Context(), message)
+		err := e.Service.OperateEvent(context.Background(), message)
 		if err != nil {
 			fmt.Println("Error executing err: ", err)
 		}
