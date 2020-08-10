@@ -24,7 +24,6 @@ type EnvConfig struct {
 
 func main() {
 	c := cron.New()
-	runAllShovels()
 	c.AddFunc("@every 15m", runAllShovels)
 	c.Start()
 	gin.SetMode(gin.ReleaseMode)

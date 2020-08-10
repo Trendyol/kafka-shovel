@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${CI_PROJECT_NAME}-deployment
+  namespace: oms
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: ${CI_PROJECT_NAME}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: ${CI_PROJECT_NAME}
+        version: "${VERSION}"
+        cluster: ${K8S_CLUSTER}
+    spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 15
+      imagePullSecrets:
+        - name: sfront-registry
+      containers:
+        - name: ${CI_PROJECT_NAME}
+          image: ${SF_DOCKER_HOST}/${CI_PROJECT_PATH}:${VERSION}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: APP_PORT
+              value: "8080"
+          envFrom:
+            - configMapRef:
+                name: ${CI_PROJECT_NAME}-config
+            - secretRef:
+                name: ${CI_PROJECT_NAME}-secret
+          livenessProbe:
+            httpGet:
+              path: /_monitoring/live
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 15
+          readinessProbe:
+            httpGet:
+              path: /_monitoring/ready
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 15
+          resources:
+            limits:
+              cpu: 2
+              memory: 2Gi
+            requests:
+              cpu: 50m
+              memory: 50Mi

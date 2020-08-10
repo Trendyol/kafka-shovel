@@ -1,0 +1,98 @@
+variables:
+  #CI_DEBUG_TRACE: "true"
+  VERSION: $CI_COMMIT_SHORT_SHA
+  DOCKER_IMAGE: $SF_DOCKER_HOST/${CI_PROJECT_PATH}:$CI_COMMIT_SHORT_SHA
+
+.except_only: &except_only
+  except:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /skip-ci/i
+  only:
+    - master
+    - /^hotfix.*$/
+
+.except_only_manual: &except_only_manual
+  <<: *except_only
+  when: manual
+  allow_failure: false
+
+stages:
+  - Build
+  - Deploy QA
+  - Deploy STAGE
+  - Deploy PROD
+
+Build:
+  stage: Build
+  <<: *except_only
+  image: docker:19.03.2
+  environment:
+    name: build
+  tags:
+    - build
+  script:
+    - docker build --build-arg VERSION=$VERSION -t $DOCKER_IMAGE .
+    - docker login -u $SF_DOCKER_USER -p $SF_DOCKER_PASS $SF_DOCKER_HOST
+    - docker push $DOCKER_IMAGE
+    - docker container prune -f
+    - docker rmi -f $DOCKER_IMAGE
+
+Deploy QA:
+  stage: Deploy QA
+  <<: *except_only_manual
+  image: sfrontregistry.trendyol.com/mplc/runners/kubectl:v1.14.3
+  environment:
+    name: qa
+  tags:
+    - qa
+  script:
+    - K8S_CLUSTER=qa envsubst < .deploy/deployment.yml | kubectl apply --record=true -f -
+    - envsubst < .deploy/service.yml | kubectl apply --record=true -f -
+
+Deploy STAGE:
+  stage: Deploy STAGE
+  <<: *except_only_manual
+  image: sfrontregistry.trendyol.com/mplc/runners/kubectl:v1.14.3
+  environment:
+    name: stage
+  tags:
+    - stage
+  script:
+    - K8S_CLUSTER=stage envsubst < .deploy/deployment.yml | kubectl apply --record=true -f -
+    - envsubst < .deploy/service.yml | kubectl apply --record=true -f -
+
+Deploy PROD1:
+  stage: Deploy PROD
+  <<: *except_only_manual
+  image: sfrontregistry.trendyol.com/mplc/runners/kubectl:v1.14.3
+  environment:
+    name: production
+  tags:
+    - prod1
+  script:
+    - K8S_CLUSTER=prod1 envsubst < .deploy/deployment.yml | kubectl apply --record=true -f -
+    - envsubst < .deploy/service.yml | kubectl apply --record=true -f -
+
+Deploy PROD2:
+  stage: Deploy PROD
+  <<: *except_only_manual
+  image: sfrontregistry.trendyol.com/mplc/runners/kubectl:v1.14.3
+  environment:
+    name: production
+  tags:
+    - prod2
+  script:
+    - K8S_CLUSTER=prod2 envsubst < .deploy/deployment.yml | kubectl apply --record=true -f -
+    - envsubst < .deploy/service.yml | kubectl apply --record=true -f -
+
+Deploy PROD3:
+  stage: Deploy PROD
+  <<: *except_only_manual
+  image: sfrontregistry.trendyol.com/mplc/runners/kubectl:v1.14.3
+  environment:
+    name: production
+  tags:
+    - prod3
+  script:
+    - K8S_CLUSTER=prod3 envsubst < .deploy/deployment.yml | kubectl apply --record=true -f -
+    - envsubst < .deploy/service.yml | kubectl apply --record=true -f -
