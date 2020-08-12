@@ -29,7 +29,8 @@ func (e *eventHandler) Cleanup(sarama.ConsumerGroupSession) error {
 
 func (e *eventHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for message := range claim.Messages() {
-		fmt.Println("Received messages", string(message.Value))
+		fmt.Printf("Received key: %s, topic: %s \n", string(message.Key), message.Topic)
+
 		err := e.Service.OperateEvent(context.Background(), message)
 		if err != nil {
 			fmt.Println("Error executing err: ", err)

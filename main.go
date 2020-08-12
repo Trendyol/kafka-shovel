@@ -118,15 +118,17 @@ func getShovels(conf EnvConfig) (result []services.Shovel) {
 
 	for _, topic := range topics {
 		for topicName, isInfinite := range conf.Topics {
-			if strings.Contains(topic, topicName) && strings.Contains(topic, conf.ErrorPrefix) {
-				retryTopic := strings.ReplaceAll(topic, conf.ErrorPrefix, conf.RetryPrefix)
-				result = append(result, services.Shovel{
-					From:            topic,
-					To:              retryTopic,
-					IsInfiniteRetry: isInfinite,
-					RetryCount:      conf.RetryCount,
-				})
+			if !strings.Contains(topic, topicName) || !strings.Contains(topic, conf.ErrorPrefix) {
+				continue
 			}
+
+			retryTopic := strings.ReplaceAll(topic, conf.ErrorPrefix, conf.RetryPrefix)
+			result = append(result, services.Shovel{
+				From:            topic,
+				To:              retryTopic,
+				IsInfiniteRetry: isInfinite,
+				RetryCount:      conf.RetryCount,
+			})
 		}
 	}
 	return
