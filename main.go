@@ -20,6 +20,7 @@ type EnvConfig struct {
 	KafkaVersion string
 	RetryCount   int
 	RunningTime  int
+	GroupName    string
 }
 
 func main() {
@@ -66,7 +67,7 @@ func runAllShovels() {
 func runKafkaShovelListener(conf EnvConfig, shovel services.Shovel) chan bool {
 	notificationChannel := make(chan bool)
 	config := kafka.ConnectionParameters{
-		ConsumerGroupID: "kafkaShovel",
+		ConsumerGroupID: conf.GroupName,
 		Conf:            KafkaConfig(conf.KafkaVersion, "kafkaShovelClient"),
 		Brokers:         conf.Brokers,
 		Topics:          []string{shovel.From},
