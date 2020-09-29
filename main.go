@@ -14,18 +14,28 @@ import (
 
 type EnvConfig struct {
 	Topics       map[string]bool
-	ErrorPrefix  string
-	RetryPrefix  string
+	ErrorSuffix  string
+	RetrySuffix  string
 	Brokers      []string
 	KafkaVersion string
 	RetryCount   int
 	RunningTime  int
 	GroupName    string
+	Duration     string `default:"15m"`
+}
+
+var config EnvConfig
+
+func init() {
+	err := envconfig.Process("", &config)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
 	c := cron.New()
-	c.AddFunc("@every 15m", runAllShovels)
+	c.AddFunc("@every "+config.Duration, runAllShovels)
 	c.Start()
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -43,12 +53,6 @@ func main() {
 }
 
 func runAllShovels() {
-	var config EnvConfig
-	err := envconfig.Process("", &config)
-	if err != nil {
-		panic(err)
-	}
-
 	var channels []chan bool
 	shovels := getShovels(config)
 	for _, shovel := range shovels {
@@ -119,11 +123,11 @@ func getShovels(conf EnvConfig) (result []services.Shovel) {
 
 	for _, topic := range topics {
 		for topicName, isInfinite := range conf.Topics {
-			if !strings.Contains(topic, topicName) || !strings.Contains(topic, conf.ErrorPrefix) {
+			if !strings.Contains(topic, topicName) || !strings.Contains(topic, conf.ErrorSuffix) {
 				continue
 			}
 
-			retryTopic := strings.ReplaceAll(topic, conf.ErrorPrefix, conf.RetryPrefix)
+			retryTopic := strings.ReplaceAll(topic, conf.ErrorSuffix, conf.RetrySuffix)
 			result = append(result, services.Shovel{
 				From:            topic,
 				To:              retryTopic,
