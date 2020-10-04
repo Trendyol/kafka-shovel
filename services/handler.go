@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/Trendyol/kafka-shovel/kafka"
-	"github.com/docker/distribution/uuid"
+	"github.com/google/uuid"
 )
 
 const runningKeyHeader = "running_key"
@@ -20,7 +20,7 @@ type eventHandler struct {
 func NewEventHandler(service Service) kafka.EventHandler {
 	return &eventHandler{
 		service:    service,
-		runningKey: uuid.Generate().String(),
+		runningKey: uuid.New().String(),
 	}
 }
 
