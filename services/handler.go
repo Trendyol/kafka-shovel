@@ -52,12 +52,12 @@ func (e *eventHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 }
 
 func (e *eventHandler) doesMessageProcessed(message *sarama.ConsumerMessage) bool {
-	for _, header := range message.Headers {
-		if string(header.Key) == runningKeyHeader {
-			if string(header.Value) == e.runningKey {
+	for i := 0; i < len(message.Headers); i++ {
+		if string(message.Headers[i].Key) == runningKeyHeader {
+			if string(message.Headers[i].Value) == e.runningKey {
 				return true
 			} else {
-				header.Value = []byte(e.runningKey)
+				message.Headers[i].Value = []byte(e.runningKey)
 				return false
 			}
 		}

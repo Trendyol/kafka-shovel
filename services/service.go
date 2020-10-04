@@ -55,12 +55,14 @@ func (s *service) OperateEvent(ctx context.Context, message *sarama.ConsumerMess
 
 func replaceRetryCount(message *sarama.ConsumerMessage, retryCount int) {
 	isFound := false
-	for _, header := range message.Headers {
-		if string(header.Key) == RetryKey {
+	for i := 0; i < len(message.Headers); i++ {
+		if string(message.Headers[i].Key) == RetryKey {
 			isFound = true
-			header.Value = []byte(strconv.Itoa(retryCount))
+			message.Headers[i].Value = []byte(strconv.Itoa(retryCount))
+			break
 		}
 	}
+
 	if !isFound {
 		message.Headers = append(message.Headers, &sarama.RecordHeader{
 			Key:   []byte(RetryKey),
