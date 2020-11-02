@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+
 	"github.com/Shopify/sarama"
 	"github.com/Trendyol/kafka-shovel/kafka"
 	"github.com/google/uuid"
@@ -37,7 +38,8 @@ func (e *eventHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 		fmt.Printf("Received key: %s, topic: %s \n", string(message.Key), message.Topic)
 		if e.doesMessageProcessed(message) {
 			fmt.Printf("Message already is processed. Shovel execution halted.  key: %s, topic: %s \n", string(message.Key), message.Topic)
-			return nil
+			session.MarkMessage(message, "")
+			continue
 		}
 
 		err := e.service.OperateEvent(context.Background(), message)
