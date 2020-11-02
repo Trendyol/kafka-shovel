@@ -14,14 +14,16 @@ const runningKeyHeader = "running_key"
 type Interceptor func(ctx context.Context, message *sarama.ConsumerMessage) context.Context
 
 type eventHandler struct {
-	runningKey string
-	service    Service
+	runningKey          string
+	service             Service
+	notificationChannel chan bool
 }
 
-func NewEventHandler(service Service) kafka.EventHandler {
+func NewEventHandler(service Service, notificationChannel chan bool) kafka.EventHandler {
 	return &eventHandler{
-		service:    service,
-		runningKey: uuid.New().String(),
+		service:             service,
+		runningKey:          uuid.New().String(),
+		notificationChannel: notificationChannel,
 	}
 }
 
@@ -38,8 +40,8 @@ func (e *eventHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 		fmt.Printf("Received key: %s, topic: %s \n", string(message.Key), message.Topic)
 		if e.doesMessageProcessed(message) {
 			fmt.Printf("Message already is processed. Shovel execution halted.  key: %s, topic: %s \n", string(message.Key), message.Topic)
-			session.MarkMessage(message, "")
-			continue
+			close(e.notificationChannel)
+			return nil
 		}
 
 		err := e.service.OperateEvent(context.Background(), message)
@@ -58,10 +60,11 @@ func (e *eventHandler) doesMessageProcessed(message *sarama.ConsumerMessage) boo
 		if string(message.Headers[i].Key) == runningKeyHeader {
 			if string(message.Headers[i].Value) == e.runningKey {
 				return true
-			} else {
-				message.Headers[i].Value = []byte(e.runningKey)
-				return false
 			}
+
+			message.Headers[i].Value = []byte(e.runningKey)
+			return false
+
 		}
 	}
 

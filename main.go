@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/Shopify/sarama"
 	"github.com/Trendyol/kafka-shovel/kafka"
 	"github.com/Trendyol/kafka-shovel/services"
 	"github.com/gin-gonic/gin"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/robfig/cron"
-	"strings"
-	"time"
 )
 
 type EnvConfig struct {
@@ -60,9 +61,11 @@ func runAllShovels() {
 	}
 
 	go func() {
-		<-time.Tick(time.Duration(config.RunningTime) * time.Minute)
+		<-time.Tick(time.Duration(config.RunningTime) * time.Second)
 		for _, v := range channels {
-			close(v)
+			if ok, _ := <-v; ok {
+				close(v)
+			}
 		}
 	}()
 
@@ -87,7 +90,7 @@ func runKafkaShovelListener(conf EnvConfig, shovel services.Shovel) chan bool {
 	}
 
 	service := services.NewService(producer, shovel)
-	handler := services.NewEventHandler(service)
+	handler := services.NewEventHandler(service, notificationChannel)
 	errChannel := consumer.Subscribe(handler)
 	go func() {
 		for e := range errChannel {
