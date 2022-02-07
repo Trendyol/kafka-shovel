@@ -1,13 +1,12 @@
 module github.com/Trendyol/kafka-shovel
 
-go 1.14
+go 1.16
 
 require (
-	github.com/Shopify/sarama v1.26.1
-	github.com/Trendyol/kafka-wrapper v0.0.0-20200329203808-48e5b8b2c69d
-	github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
+	github.com/Shopify/sarama v1.31.1
 	github.com/gin-gonic/gin v1.6.2
 	github.com/google/uuid v1.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/robfig/cron v1.2.0
+	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838 // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )

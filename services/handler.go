@@ -16,10 +16,10 @@ type Interceptor func(ctx context.Context, message *sarama.ConsumerMessage) cont
 type eventHandler struct {
 	runningKey          string
 	service             Service
-	notificationChannel chan bool
+	notificationChannel chan string
 }
 
-func NewEventHandler(service Service, notificationChannel chan bool) kafka.EventHandler {
+func NewEventHandler(service Service, notificationChannel chan string) kafka.EventHandler {
 	return &eventHandler{
 		service:             service,
 		runningKey:          uuid.New().String(),
@@ -39,9 +39,8 @@ func (e *eventHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 	for message := range claim.Messages() {
 		fmt.Printf("Received key: %s, topic: %s \n", string(message.Key), message.Topic)
 		if e.doesMessageProcessed(message) {
-			fmt.Printf("Message already is processed. Shovel execution halted.  key: %s, topic: %s \n", string(message.Key), message.Topic)
-			close(e.notificationChannel)
-			return nil
+			e.runningKey = uuid.New().String()
+			e.notificationChannel <- kafka.Stop
 		}
 
 		err := e.service.OperateEvent(context.Background(), message)

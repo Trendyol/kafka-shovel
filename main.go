@@ -10,37 +10,30 @@ import (
 	"github.com/Trendyol/kafka-shovel/services"
 	"github.com/gin-gonic/gin"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/robfig/cron"
 )
 
 type EnvConfig struct {
-	Topics       map[string]bool
-	ErrorSuffix  string
-	RetrySuffix  string
-	Brokers      []string
+	Topics       map[string]bool `required:"true"`
+	ErrorSuffix  string          `required:"true"`
+	RetrySuffix  string          `required:"true"`
+	Brokers      []string        `required:"true"`
 	KafkaVersion string
 	RetryCount   int
-	RunningTime  int
-	GroupName    string
-	Duration     string `default:"15m"`
-}
-
-var config EnvConfig
-
-func init() {
-	err := envconfig.Process("", &config)
-	if err != nil {
-		panic(err)
-	}
+	GroupName    string `required:"true"`
+	Duration     int    `default:"5"`
 }
 
 func main() {
-	c := cron.New()
-	c.AddFunc("@every "+config.Duration, runAllShovels)
-	c.Start()
+	var config EnvConfig
+	envconfig.MustProcess("", &config)
+
+	shovels := getShovels(config)
+	for _, shovel := range shovels {
+		runKafkaShovelListener(config, shovel)
+	}
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-
 	r.GET("/_monitoring/ready", healthCheck)
 	r.GET("/_monitoring/live", healthCheck)
 
@@ -53,26 +46,8 @@ func main() {
 	}
 }
 
-func runAllShovels() {
-	var channels []chan bool
-	shovels := getShovels(config)
-	for _, shovel := range shovels {
-		channels = append(channels, runKafkaShovelListener(config, shovel))
-	}
-
-	go func() {
-		<-time.Tick(time.Duration(config.RunningTime) * time.Second)
-		for _, v := range channels {
-			if ok, _ := <-v; ok {
-				close(v)
-			}
-		}
-	}()
-
-}
-
-func runKafkaShovelListener(conf EnvConfig, shovel services.Shovel) chan bool {
-	notificationChannel := make(chan bool)
+func runKafkaShovelListener(conf EnvConfig, shovel services.Shovel) {
+	notificationChannel := make(chan string)
 	config := kafka.ConnectionParameters{
 		ConsumerGroupID: conf.GroupName,
 		Conf:            KafkaConfig(conf.KafkaVersion, "kafkaShovelClient"),
@@ -91,19 +66,21 @@ func runKafkaShovelListener(conf EnvConfig, shovel services.Shovel) chan bool {
 
 	service := services.NewService(producer, shovel)
 	handler := services.NewEventHandler(service, notificationChannel)
-	errChannel := consumer.Subscribe(handler)
+	consumer.Subscribe(handler)
+
 	go func() {
-		for e := range errChannel {
-			fmt.Println(e)
-			_ = producer.Close()
+		for {
+			select {
+			case <-notificationChannel:
+				consumer.Stop()
+				<-time.Tick(time.Duration(conf.Duration) * time.Minute)
+				consumer.Start()
+			}
 		}
 	}()
-	go func() {
-		<-notificationChannel
-		consumer.Unsubscribe()
-	}()
+
 	fmt.Printf("%v listener is starting", shovel.From)
-	return notificationChannel
+	return
 }
 
 func getShovels(conf EnvConfig) (result []services.Shovel) {

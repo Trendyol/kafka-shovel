@@ -1,7 +1,6 @@
-FROM golang:1.14.1-alpine3.11 AS builder
+FROM golang:1.16.13-stretch AS builder
 WORKDIR /kafka-shovel
 ENV GO111MODULE=on
-ENV GOINSECURE=mplc-gitlab.trendyol.com
 
 COPY go.mod go.sum ./
 RUN go mod download

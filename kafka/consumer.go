@@ -7,8 +7,9 @@ import (
 )
 
 type Consumer interface {
-	Subscribe(handler EventHandler) chan error
-	Unsubscribe()
+	Subscribe(handler EventHandler)
+	Start()
+	Stop()
 }
 
 type EventHandler interface {
@@ -34,19 +35,18 @@ func NewConsumer(connectionParams ConnectionParameters) (Consumer, error) {
 	}, nil
 }
 
-func (c *kafkaConsumer) Subscribe(handler EventHandler) chan error {
-	consumerError := make(chan error)
+func (c *kafkaConsumer) Subscribe(handler EventHandler) {
 	ctx := context.Background()
+
 	go func() {
 		for {
-			if err := c.consumerGroup.Consume(ctx, c.topic, handler);
-				err != nil {
-				consumerError <- err
+			if err := c.consumerGroup.Consume(ctx, c.topic, handler); err != nil {
+				fmt.Println("Error from consumer group : ", err.Error())
 				return
 			}
 
 			if ctx.Err() != nil {
-				consumerError <- ctx.Err()
+				fmt.Println("Error from consumer group : ", ctx.Err())
 				return
 			}
 		}
@@ -56,12 +56,12 @@ func (c *kafkaConsumer) Subscribe(handler EventHandler) chan error {
 			fmt.Println("Error from consumer group : ", err.Error())
 		}
 	}()
-	return consumerError
 }
 
-func (c *kafkaConsumer) Unsubscribe() {
-	if err := c.consumerGroup.Close(); err != nil {
-		fmt.Println("Client wasn't closed ", err)
-	}
-	fmt.Println("Kafka consumer closed")
+func (c *kafkaConsumer) Start() {
+	c.consumerGroup.ResumeAll()
+}
+
+func (c *kafkaConsumer) Stop() {
+	c.consumerGroup.PauseAll()
 }
