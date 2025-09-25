@@ -1,3 +1,5 @@
+
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Trendyol/kafka-shovel/badge)](https://scorecard.dev/viewer/?uri=github.com/Trendyol/kafka-shovel)
 # Description
 **Kafka shovel moves error topic to retry topic. It indicates topics from ERRORSUFFIX then replace it to RETRYSUFFIX.Error topics must have ERRORSUFFIX suffix and retry topics must have RETRYSUFFIX suffix. Default , It runs every 5 minutes.**
 
